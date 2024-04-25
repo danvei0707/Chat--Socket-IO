@@ -1,0 +1,21 @@
+{
+  "type": "module",
+  "name": "socket-chat-practice",
+  "version": "0.0.1",
+  "description": "\"First experiments with socket.io",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node --watch index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@socket.io/cluster-adapter": "^0.2.2",
+    "chalk": "^5.3.0",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
+  }
+}
