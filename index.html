@@ -4,12 +4,23 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>Socket.IO chat</title>
     <style>
-      body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; width: 100%; height: 100%;}
 
       #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
       #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
       #input:focus { outline: none; }
       #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+
+      /* Nickname form */
+      #nicknameForm { 
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 100%; height: 100%; background-color: rgba(220, 220, 220, 0.808);
+        display: flex; align-items: center; justify-content: center;
+      }
+      #nickErr { 
+      position: fixed; top: 60%; left: 50%; transform: translate(-50%, -50%);
+      color: rgb(173, 6, 6); display: none;
+      }
 
       #messages { list-style-type: none; margin: 0; padding: 0; }
       #messages > li { padding: 0.5rem 1rem; }
@@ -17,8 +28,16 @@
     </style>
   </head>
   <body>
+    <section id="cover">
+    <form id="nicknameForm">
+      <input type="text" placeholder="Nickname" id="nicknameInput" placeholder="Enter your nickname" required>
+      <button type="submit">Join Chat</button>
+  </form>
+  <p id="nickErr">Username already taken</p>
+  </section>
+
     <ul id="messages"></ul>
-    <form id="form" action="">
+    <form id="form" action="" style="display: none;">
       <input id="input" autocomplete="off" /><button>Send</button>
       <!-- Disconnect button (test) -->
       <button id="toggle-btn">Disconnect</button>
@@ -39,7 +58,42 @@
         retries: 3,
       });
 
-      // Track the form, input and messages
+      // ======= NICKNAME LOGICS ===============================================================
+
+      // Track the nickname modal and form
+      const nicknameForm = document.getElementById('nicknameForm');
+      const nicknameInput = document.getElementById('nicknameInput');
+      const nicknameErr = document.getElementById('nickErr');
+
+
+      const handleNicknameSubmit = nicknameForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const nickname = nicknameInput.value.trim();
+        if (nickname) {
+          socket.emit('setNickname', nickname);
+          nicknameForm.removeEventListener('submit', handleNicknameSubmit);
+        }
+      });
+      
+      socket.on('isNicknameValid', (object) => {
+        const bool = object.bool;
+        if (bool){
+          // Hide nickname interface
+          nicknameForm.style.display = 'none';
+          nicknameErr.style.display = 'none';
+          nicknameForm.removeEventListener('submit', handleNicknameSubmit);
+          
+          // Display messages bar
+          form.style.display = 'flex'
+        } else {
+          // Show error
+          nicknameErr.style.display = 'block';
+        }
+      })
+
+
+      // ==== MESSAGES LOGIC ============================================
+      
       const form = document.getElementById('form');
       const input = document.getElementById('input');
       const messages = document.getElementById('messages');
@@ -56,30 +110,39 @@
       })
 
       // When the socket displays the event chat message add it to the screen
-      socket.on('chat message', (msg, serverOffset) => {
+      socket.on('chat message', (nickname, msg, serverOffset) => {
         const item = document.createElement('li');
-        item.textContent = msg;
+
+        // Message content
+        item.textContent = `${nickname}: ${msg}`;
+
         messages.appendChild(item);
         window.scrollTo(0, document.body.scrollHeight);
         socket.auth.serverOffset = serverOffset;
       });
 
-      socket.on('userJoined', (msg) => {
-        const item = document.createElement('li');
-        item.textContent = msg;
-        console.log('HAS JOINED!!', msg);
-        messages.appendChild(item);
-        window.scrollTo(0, document.body.scrollHeight);
-      });
 
-      socket.on('userLeft', (msg) => {
-        const item = document.createElement('li');
-        item.textContent = msg;
-        messages.appendChild(item);
-        window.scrollTo(0, document.body.scrollHeight);
-      });
+      // ==== STATUSES LOGIC ============================================
+ 
+      // socket.on('userJoined', (msg) => {
+      //   const item = document.createElement('li');
+      //   item.textContent = msg;
+      //   console.log('HAS JOINED!!', msg);
+      //   messages.appendChild(item);
+      //   window.scrollTo(0, document.body.scrollHeight);
+      // });
 
-      // Disconnect login (test)
+      // socket.on('userLeft', (msg) => {
+      //   const item = document.createElement('li');
+      //   item.textContent = msg;
+      //   messages.appendChild(item);
+      //   window.scrollTo(0, document.body.scrollHeight);
+      // });
+
+
+      // DISCONNECTION BUTTON - test **********************************************************
+      // *******************************************************************************
+
       const toggleButton = document.getElementById('toggle-btn');
 
       toggleButton.addEventListener('click', (e) => {

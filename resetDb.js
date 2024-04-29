@@ -13,9 +13,11 @@ await db.exec(`
 `)
 
 await db.exec(`
-    CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        content TEXT
-    );
+CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nickname TEXT,
+    clientOffset TEXT UNIQUE,
+    content TEXT
+);
 `);
 console.log(chalk.yellow.bold('Messages database restored correctly!'));
