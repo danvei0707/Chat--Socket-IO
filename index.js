@@ -72,31 +72,24 @@ if (cluster.isPrimary) {
         console.log('New user connected:', chalk.gray(`${socket.id}`));
         // socket.emit('userJoined', `New user connected (${socket.id})`);
 
-        // ! ==================================================================================
-
-            // Debug counter
-            let counter = 0;
-
-        // ! ==================================================================================
 
         socket.on('setNickname', (nickname, callback) => {
             let bool = true;
             const recipient = socket.id;
             if (nickname && !users[nickname]) {
-                users[nickname] = socket.id;
+                users[nickname] = {
+                    isOnline: true,
+                    connectionId: socket.id
+                }
                 socket.nickname = nickname;
-                console.log(`${nickname} joined the chat`);
-                io.emit('message', `${nickname} joined the chat`);
-                socket.emit('isNicknameValid', { recipient, bool });
+                socket.emit('isNicknameValid', { recipient, bool }, users);
+
+                // Verified: actually joining the chat => notify all users but the sender
+                console.log(`${nickname} joined the chat`);         
+                socket.broadcast.emit('userConnectionStatus', nickname,'joined', users)
 
                 // Acknowledge the event: prevent from retries (error)
                 callback();
-
-                // Debug ===================================================
-
-                console.log(users);
-
-                // ==========================================================
             } else {
                 // Inform user that the nickname is already in use
                 console.log('Repeated nickname', socket.id);
@@ -110,15 +103,11 @@ if (cluster.isPrimary) {
                 callback();
             }
         });
-        
 
         //TODO Fordward him to a room
         // const room = 'Room 1'
         // socket.join(room);
         // console.log('Joining room:', room);
-
-        //* Broadcast: sends to everyone but the sender
-        socket.broadcast.emit('welcomeMsg', 'Hello!')
 
         socket.on('set username', async (name) => {
             console.log(socket);
@@ -168,9 +157,17 @@ if (cluster.isPrimary) {
 
         // When a user disconnects
         socket.on('disconnect', (reason, details) => {
-            console.log('user disconnected - offline');
-            socket.emit('userLeft', 'A user has left the chat');
+            const nickname = socket.nickname
+
+            //TODO Set status offline
+         if (nickname){
+            users[nickname].isOnline = false
+                    
+            io.emit('userConnectionStatus', nickname, 'left', users);
             // console.log('details:', details);
+         }
+           
+            console.log(nickname, 'disconnected');
         })
     });
 
