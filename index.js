@@ -10,6 +10,7 @@ import { error, log } from 'node:console';
 import { availableParallelism } from 'node:os';
 import cluster from 'node:cluster';
 import { createAdapter, setupPrimary } from '@socket.io/cluster-adapter';
+import { connect } from 'node:http2';
 
 
 
@@ -41,6 +42,7 @@ if (cluster.isPrimary) {
 
     });
 
+    // TODO Make them persistent somehow, or delete after x days.
     const users = {}
 
      // Use or create DB
@@ -72,6 +74,20 @@ if (cluster.isPrimary) {
         console.log('New user connected:', chalk.gray(`${socket.id}`));
         // socket.emit('userJoined', `New user connected (${socket.id})`);
 
+        socket.on('restoreUser', (previousNickname, previousId) => {
+            console.log(users[previousNickname])
+            const requestedUser = users[previousNickname];
+            if (requestedUser && requestedUser.connectionId === previousId) {
+            console.log('Valid');
+            //? Restore his id - Works in front
+            users[previousNickname].connectionId = socket.id;
+            } else {
+                // If ID doesn't match DB (malware)
+
+                // Error 
+                socket.emit('restoreUser', 'Invalid')
+            }
+        })
 
         socket.on('setNickname', (nickname, callback) => {
             let bool = true;
@@ -82,7 +98,8 @@ if (cluster.isPrimary) {
                     connectionId: socket.id
                 }
                 socket.nickname = nickname;
-                socket.emit('isNicknameValid', { recipient, bool }, users);
+
+                socket.emit('isNicknameValid', { recipient, bool }, {nickname, id: socket.id});
 
                 // Verified: actually joining the chat => notify all users but the sender
                 console.log(`${nickname} joined the chat`);         
@@ -112,7 +129,11 @@ if (cluster.isPrimary) {
         socket.on('set username', async (name) => {
             console.log(socket);
             console.log(name);
-        })
+        });
+
+        //ToDo: When a user is typing
+         
+
 
         // When a user sends a message
         socket.on('chat message', async (msg, clientOffset, callback) => {

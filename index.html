@@ -21,11 +21,18 @@
       #input:focus { outline: none; }
       #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
 
+      /* Restore user screen */
+      #restoreUserDiv { 
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 100%; height: 100%; background-color: rgba(220, 220, 220, 0.808);
+        display: none; align-items: center; justify-content: center; gap: 2rem; flex-direction: column;
+      }
+
       /* Nickname form */
       #nicknameForm { 
         position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
         width: 100%; height: 100%; background-color: rgba(220, 220, 220, 0.808);
-        display: flex; align-items: center; justify-content: center;
+        display: none; align-items: center; justify-content: center;
       }
       #nickErr { 
       position: fixed; top: 60%; left: 50%; transform: translate(-50%, -50%);
@@ -41,7 +48,17 @@
     <header>My Socket Chat
       <button id="onlineUsers">Online Users</button>
     </header>
+
     <section id="cover">
+
+      <div id="restoreUserDiv">
+        <p id="restoreUserTxt"></p>
+        <div>
+          <button id="restoreUserBtn" onclick="restoreUser()">Continue</button>
+          <button id="newUserBtn" onclick="deletePreviousUser()">New User</button>  
+        </div>
+      </div>
+
     <form id="nicknameForm">
       <input type="text" placeholder="Nickname" id="nicknameInput" placeholder="Enter your nickname" required>
       <button type="submit">Join Chat</button>
@@ -77,28 +94,82 @@
 
       // ======= NICKNAME LOGICS ===============================================================
 
+      // Track the restore session components
+      const restoreUserDiv = document.getElementById('restoreUserDiv');
+      const restoreUserTxt = document.getElementById('restoreUserTxt');
+
       // Track the nickname modal and form
       const nicknameForm = document.getElementById('nicknameForm');
       const nicknameInput = document.getElementById('nicknameInput');
       const nicknameErr = document.getElementById('nickErr');
 
+      const previousNickname = localStorage.getItem("nickname")
+      const previousId = localStorage.getItem("socket_id")
+      if (previousNickname){
 
-      const handleNicknameSubmit = nicknameForm.addEventListener('submit', (event) => {
+        // Use previous nickname
+        restoreUserDiv.style.display = 'flex'
+        restoreUserTxt.innerHTML = `Do you want to continue as <strong>${previousNickname}</strong>?`
+
+        // Function for "Continue" - when the user WANTS to restore 
+        function restoreUser() {
+          socket.emit("restoreUser", previousNickname, previousId)           
+        }
+
+
+        // Function for "New User" - When the user DOES NOT WANT to restore
+        function deletePreviousUser() {
+          localStorage.removeItem("nickname");
+          localStorage.removeItem("socket_id")
+
+          // ? Prepare the nickname form - MOVE TO FUNCTION
+          restoreUserDiv.style.display = 'none'
+          nicknameForm.style.display = 'flex';
+
+          const handleNicknameSubmit = nicknameForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const nickname = nicknameInput.value.trim();
+            if (nickname) {
+              socket.emit('setNickname', nickname);
+            }
+          });
+        };
+
+      } else { 
+
+        // Create a new Username 
+        nicknameForm.style.display = 'flex';
+
+        const handleNicknameSubmit = nicknameForm.addEventListener('submit', (event) => {
         event.preventDefault();
         const nickname = nicknameInput.value.trim();
         if (nickname) {
           socket.emit('setNickname', nickname);
-          nicknameForm.removeEventListener('submit', handleNicknameSubmit);
         }
       });
-      
-      socket.on('isNicknameValid', (object, updatedUsers) => {
-        const bool = object.bool;
-        if (bool){
-          // Send the list of active users
-          users = updatedUsers
-          console.log(users);
 
+
+      // In response to restore session
+
+      socket.on('restoreUser', (res) => {
+        console.log(`
+
+
+
+        ${res}
+        `);
+      }) 
+
+      
+      // When a new nickname is introduced
+
+      socket.on('isNicknameValid', (object, {nickname, id}) => {
+        // const bool = object.bool;
+        const bool = true
+        if (bool){
+          localStorage.setItem("nickname", nickname);
+          localStorage.setItem("socket_id", id);
+          
           // Hide nickname interface
           nicknameForm.style.display = 'none';
           nicknameErr.style.display = 'none';
@@ -106,11 +177,16 @@
 
           // Display messages bar
           form.style.display = 'flex'
+
+          // Save user to local storage
+          localStorage.setItem("nickname", nickname)
         } else {
           // Show error
           nicknameErr.style.display = 'block';
         }
       })
+
+      }
 
 
       // ==== MESSAGES LOGIC ============================================
@@ -142,6 +218,16 @@
         socket.auth.serverOffset = serverOffset;
       });
 
+    // ____ USER IS TYPING LOGIC ____________________________________________
+
+      // function timeoutFunction() {
+      //   socket.emit("typing", false)
+      // }  
+
+      input.addEventListener('keydown', () => {
+        socket.emit("typing", 'lol')
+        console.log('Keyup');
+      })
 
       // ==== STATUSES LOGIC ============================================
 
@@ -187,6 +273,7 @@
             const item = document.createElement('li');
             item.textContent = user;
             item.style.color = 'green';
+            item.alt
             usersList.appendChild(item);
           });
 
